@@ -10,7 +10,10 @@ var builder = require('botbuilder');
 
 // API Key - Free Level
 // Provides 60 requests a minute
-var APPID = '7eced897468f2ccff50a9c4decc7c529&q';
+var APPID = '7eced897468f2ccff50a9c4decc7c529';
+
+// Units parameter (metric, imperial, empty = kelvin)
+var units = '&units=metric';
 
 // Replys to the user in the current session with the weather report for the specified city
 exports.requestByCity = function requestByCity(city, session) {
@@ -23,7 +26,7 @@ exports.requestByCity = function requestByCity(city, session) {
     var options = {
         host: 'api.openweathermap.org',
         port: 80,
-        path: '/data/2.5/weather?APPID=' + APPID + '=' + city.replace(/ /g, '+'),
+        path: '/data/2.5/weather?APPID=' + APPID + '&q=' + city.replace(/ /g, '+') + units,
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
     };
@@ -72,13 +75,13 @@ function extractReport(response) {
     // Retrieve any secondary weather object if available
     if(response.weather.length == 2) {
 
-        weather = response.weather[1];
+        var weather = response.weather[1];
         icons += ' ![](http://openweathermap.org/img/w/' + weather.icon + '.png)';
-        description += ' with ' + weather.description;
+        description += ' and ' + weather.description;
     }
 
-    // Cap off description
-    description += '.';
+    // Include temperature information to description
+    description += ' with a temperature of **' + Math.round(response.main.temp) + '°C**.';
 
     // Return full report
     return '## ' + response.name + icons + '\n' + "Today's weather is " + description;
