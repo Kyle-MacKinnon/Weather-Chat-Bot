@@ -1,4 +1,10 @@
 
+/*
+    Author: Kyle MacKinnon
+    Date: 15/07/2017
+    Description: Initiates the chat bot and controls conversation flow.
+*/
+
 var restify = require('restify');
 var builder = require('botbuilder');
 var weather = require('./weather.js');
@@ -23,7 +29,7 @@ server.post('/api/messages', connector.listen());
 function messageHandler(session) {
 
     // Make a weather request for the current session
-    weather.requestByCity('Auckland', session);
+    weather.requestByCity(session.message.text, session);
 }
 
 // Run bot using message handler
