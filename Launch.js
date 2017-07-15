@@ -1,6 +1,7 @@
 
 var restify = require('restify');
 var builder = require('botbuilder');
+var weather = require('./weather.js');
 var http = require('http');
 
 // Setup and run Restify web server
@@ -21,34 +22,9 @@ server.post('/api/messages', connector.listen());
 // Create a function for handling messages
 function messageHandler(session) {
 
-    // Location to find weather for
-    var city = 'Auckland';
-
-    // HTTP request options
-    var options = {
-        host: 'api.openweathermap.org',
-        port: 80,
-        path: '/data/2.5/weather?APPID=7eced897468f2ccff50a9c4decc7c529&q=' + city,
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-    };
-
-    // HTTP request callback
-    function callback(result) {
-
-        // Retrieve the JSON response
-        result.on('data', function(data) {
-            var response = JSON.parse(data);
-            var city = response.name;
-            var weather  = response.weather[0];
-
-            session.send('## ' + city + '![](http://openweathermap.org/img/w/' + response.weather[0].icon +'.png)' + "\n" + weather.main);
-        });
-    }
-
-    // Make request
-    http.request(options, callback).end();
+    // Make a weather request for the current session
+    weather.requestByCity('Auckland', session);
 }
 
 // Run bot using message handler
-var bot = new builder.UniversalBot(connector, messageHandler)
+var bot = new builder.UniversalBot(connector, messageHandler);
