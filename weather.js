@@ -16,7 +16,7 @@ var APPID = '7eced897468f2ccff50a9c4decc7c529';
 var units = '&units=metric';
 
 // Replys to the user in the current session with the weather report for the specified city
-exports.requestByCity = function requestByCity(city, session) {
+exports.requestByCity = function requestByCity(session, city, returnDialog) {
 
     // Replace spaces in city with + sign
     // City must not have spaces as an HTTP parameter
@@ -44,14 +44,16 @@ exports.requestByCity = function requestByCity(city, session) {
             var report = extractReport(response);
 
             // Send back report if city could be found
-            if(report != null)  
-            {
-                session.send(report);
-            
-            } else {
+            if(report != null) {
 
+                session.send(report);
+            } 
+            else {
                 session.send("I wasn't able to find a city by that name.");
             }
+            
+            // Ask the user for another city
+            session.replaceDialog(returnDialog);
         });
     }
 
@@ -84,5 +86,5 @@ function extractReport(response) {
     description += ' with a temperature of **' + Math.round(response.main.temp) + '°C**.';
 
     // Return full report
-    return '## ' + response.name + icons + '\n' + "Today's weather is " + description;
+    return '## ' + response.name + ', ' + response.sys.country + icons + '\n' + "Today's weather is " + description;
 }
