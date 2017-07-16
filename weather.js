@@ -36,29 +36,50 @@ exports.requestByCity = function requestByCity(session, city, returnDialog) {
 
         // If data in response
         result.on('data', function(data) {
+           
+            // Catch any errors extracting the weather report from the JSON
+            try {
 
-            // Parse JSON object from data
-            var response = JSON.parse(data);
+                // Parse JSON object from data
+                var response = JSON.parse(data);
 
-            // Extract weather report
-            var report = extractReport(response);
+                // Extract weather report
+                var report = extractReport(response);
 
-            // Send back report if city could be found
-            if(report != null) {
+                // Send back report if city could be found
+                if(report != null) {
+                    session.send(report);
 
-                session.send(report);
-            } 
-            else {
-                session.send("I wasn't able to find a city by that name.");
-            }
+                } else {
+                    session.send("I wasn't able to find a city by that name.");
+                }
+                
+                // Ask the user for another city
+                session.replaceDialog(returnDialog);
             
-            // Ask the user for another city
-            session.replaceDialog(returnDialog);
+            } catch(error) {
+                weatherReportError(session, error);
+            }
         });
     }
 
+    // Setup request
+    var request = http.request(options, callback);
+
+    // We don't want users waiting too long for a response from the weather API
+    request.setTimeout(10000);
+
+    // Catch any errors during the HTTP request
+    request.on('error', function(error) {                 
+        weatherReportError(session, error); 
+    })
+
+    request.on('timeout', function(error) {                 
+        weatherReportError(session, error); 
+    })
+
     // Make request
-    http.request(options, callback).end();
+    request.end();
 }
 
 // Extracts weather report from JSON response
@@ -87,4 +108,12 @@ function extractReport(response) {
 
     // Return full report
     return '## ' + response.name + ', ' + response.sys.country + icons + '\n' + "Today's weather is " + description;
+}
+
+// Called whenever an error has been encountered while processing a weather report request
+function weatherReportError(session, error) {
+    
+    session.send("There was an issue getting the weather report sorry. Please feel free to try again.");
+    console.log(error);
+    session.endDialog(); 
 }

@@ -12,6 +12,7 @@ var http = require('http');
 
 // Setup and run Restify web server
 var server = restify.createServer();
+
 server.listen(process.env.port || process.env.PORT || 3978, function () {
    console.log('%s listening to %s', server.name, server.url); 
 });
@@ -25,32 +26,33 @@ var connector = new builder.ChatConnector({
 // Listen for messages from users at URL
 server.post('/api/messages', connector.listen());
 
-// Create a function for handling messages
-function messageHandler(session) {
+// Run bot 
+var bot = new builder.UniversalBot(connector, 
+    
+    // Default function for all new sessions
+    function (session) {
 
-    // Take the user's message as lower case
-    var input = session.message.text.toLowerCase()
+        // Take the user's message as lower case
+        var input = session.message.text.toLowerCase()
 
-    // If they gave either greeting begin the dialog
-    if(input == 'hello' || input == 'hi') {
+        // If they gave either greeting begin the dialog
+        if(input == 'hello' || input == 'hi') {
 
-        // Prompt user for weather
-        session.beginDialog('root');
+            // Start conversation with the user
+            session.beginDialog('weatherQuestion');
+        }
+
+        // Let the user know how to begin a conversation
+        else {
+            session.send("Say **hi** or **hello** to start a conversation.");
+        }
     }
+);
 
-    // Let the user know how to begin an iteraction
-    else {
-        session.send("Say 'hi' or 'hello' to start a conversation.");
-    }
-}
+// Does the user want a weather report?
+bot.dialog('weatherQuestion', [
 
-// Run bot using message handler
-var bot = new builder.UniversalBot(connector, messageHandler);
-
-// Greeting Menu
-bot.dialog('root', [
-
-    // Would they like the weather report?
+    // Ask the user if they want a weather report
     function (session) {
         builder.Prompts.choice(session, 'Hi there, would you like to know the weather in your city?', ['Yes','No'], { listStyle: builder.ListStyle["button"]});
     },
@@ -60,9 +62,9 @@ bot.dialog('root', [
 
         switch(results.response.entity) {
 
-            case 'Yes': session.beginDialog('chooseCity'); return;
-            case 'No': session.endDialog("That's okay, say hi again when you do."); return;
-            default: session.endDialog(); return;
+            case 'Yes' : session.beginDialog('chooseCity'); return;
+            case 'No' : session.endDialog("That's okay, say hi again when you do."); return;
+            default : session.endDialog(); return;
         }
     }
 ]);
@@ -75,13 +77,34 @@ bot.dialog('chooseCity', [
         builder.Prompts.text(session, "What city would you like a weather report for?");
     },
     
-    // Capture response and generate weather report
+    // Capture response
     function(session, results) {
         
-        // Make a weather request for the current session
-        weather.requestByCity(session, results.response, 'repeatQuestion');   
+        // Request weather report for current session, redirect to repeatQuestion when report comes through
+        weather.requestByCity(session, results.response, 'repeatQuestion');
+
+        // It may take a while for that report to come through
+        // If the stack hasn't been changed, the report hasn't come through so move onto the waiting dialog
+        if(session.dialogStack().pop().id != 'repeatQuestion') {
+
+            // Make sure the user is only notified when sending new messages while waiting
+            session.message.text = "";
+            session.replaceDialog('waitForReport');
+        }
+
+        
     }
 ]);
+
+// In the event the weather report takes a long time to load
+bot.dialog('waitForReport', [
+
+    function(session) {
+        if(session.message.text.length > 0) {
+            session.send("Your weather report will be ready in one moment.");
+        }
+    }
+])
 
 // Ask user again if they would like another city
 bot.dialog('repeatQuestion', [
